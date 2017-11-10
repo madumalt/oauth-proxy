@@ -1,0 +1,137 @@
+
+<!--
+  ~ Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+  ~
+  ~ WSO2 Inc. licenses this file to you under the Apache License,
+  ~ Version 2.0 (the "License"); you may not use this file except
+  ~ in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing,
+  ~ software distributed under the License is distributed on an
+  ~ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  ~ KIND, either express or implied. See the License for the
+  ~ specific language governing permissions and limitations
+  ~ under the License.
+  -->
+
+<!DOCTYPE html>
+<html>
+
+<head lang="en">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta charset="utf-8">
+
+	<title>Mobile Shop</title>
+
+	<link href="http://fonts.googleapis.com/css?family=Open+Sans:400" rel="stylesheet">
+	<link href="assets/css/styles.css" rel="stylesheet">
+</head>
+
+<body>
+
+	<header id="header-element" class="compact">
+		<h2 class="tzine"><a href="#logout">Logout</a></h2>
+		<h1>Mobile Shop</h1>
+	</header>
+
+	<div class="main-content">
+
+		<div class="login page">
+			<div class="overlay"></div>
+				<div class="login-preview-large">
+				<h3>Login Page</h3>
+				<h2><a href="#login">Login</a></h2>
+			</div>
+		</div>
+
+		<div class="all-products page">
+
+			<div class="filters">
+				<form>
+
+					<div class="filter-criteria">
+						<span>Manufacturer</span>
+						<label><input type="checkbox" name="manufacturer" value="apple">Apple</label>
+						<label><input type="checkbox" name="manufacturer" value="samsung">Samsung</label>
+						<label><input type="checkbox" name="manufacturer" value="htc">HTC</label>
+						<label><input type="checkbox" name="manufacturer" value="nokia">Nokia</label>
+						<label><input type="checkbox" name="manufacturer" value="zte">ZTE</label>
+						<label><input type="checkbox" name="manufacturer" value="sony">Sony</label>
+					</div>
+
+					<div class="filter-criteria">
+						<span>Screen Size</span>
+						<label><input type="checkbox" value="16" name="storage">16 GB</label>
+						<label><input type="checkbox" value="32" name="storage">32 GB</label>
+					</div>
+
+					<div class="filter-criteria">
+						<span>OS</span>
+						<label><input type="checkbox" value="android" name="os">Android</label>
+						<label><input type="checkbox" value="ios" name="os">iOS</label>
+						<label><input type="checkbox" value="windows" name="os">Windows</label>
+					</div>
+
+					<div class="filter-criteria">
+						<span>Camera</span>
+						<label><input type="checkbox" value="5" name="camera">5 Mpx</label>
+						<label><input type="checkbox" value="8" name="camera">8 Mpx</label>
+						<label><input type="checkbox" value="12" name="camera">12 Mpx</label>
+						<label><input type="checkbox" value="15" name="camera">15 Mpx</label>
+					</div>
+
+					<button>Clear filters</button>
+
+				</form>
+
+			</div>
+
+			<ul class="products-list">
+				<script id="products-template" type="x-handlebars-template">​
+					{{#each this}}
+						<li data-index="{{id}}">
+							<a href="#home" class="product-photo"><img src="{{image.small}}" height="130"
+																	alt="{{name}}"/></a>
+							<h2><a href="#home"> {{name}} </a></h2>
+							<ul class="product-description">
+								<li><span>Manufacturer: </span>{{specs.manufacturer}}</li>
+								<li><span>Storage: </span>{{specs.storage}} GB</li>
+								<li><span>OS: </span>{{specs.os}}</li>
+								<li><span>Camera: </span>{{specs.camera}} Mpx</li>
+							</ul>
+							<button>Buy Now!</button>
+							<p class="product-price">{{price}}$</p>
+							<div class="highlight"></div>
+						</li>
+					{{/each}}
+				</script> 
+			</ul>
+
+		</div>
+
+		<div class="single-product page">
+
+			<div class="overlay"></div>
+
+			<div class="preview-large">
+				<h3>Single product view</h3>
+				<img src=""/>
+				<p></p>
+
+				<span class="close">×</span>
+			</div>
+
+		</div>
+	</div>
+
+
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+	<script src="//cdnjs.cloudflare.com/ajax/libs/handlebars.js/2.0.0/handlebars.min.js"></script>
+	<script src="assets/js/script.js"></script>
+
+
+</body>
+</html>
