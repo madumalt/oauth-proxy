@@ -1,0 +1,16 @@
+*.class
+.classpath
+.settings
+.project
+*.iml
+*.iws
+*.ipr
+.idea
+
+# Package Files #
+*.jar
+*.war
+*.ear
+
+# Ignore everything in this directory
+target
