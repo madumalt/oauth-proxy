@@ -20,6 +20,7 @@
 package org.wso2.carbon.identity.oauth.proxy;
 
 import java.io.IOException;
+import java.util.Calendar;
 import java.util.regex.Pattern;
 
 import javax.servlet.http.Cookie;
@@ -42,11 +43,13 @@ import org.apache.amber.oauth2.common.exception.OAuthProblemException;
 import org.apache.amber.oauth2.common.exception.OAuthSystemException;
 import org.apache.amber.oauth2.common.message.types.GrantType;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.cxf.jaxrs.ext.MessageContext;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
+import org.wso2.carbon.identity.oauth.proxy.exceptions.OAuthProxyException;
 import org.wso2.carbon.identity.oauth.proxy.util.ProxyFaultCodes;
 import org.wso2.carbon.identity.oauth.proxy.util.ProxyUtils;
 
@@ -80,19 +83,19 @@ public class LoginProxy {
      *            SPA.
      * @param code each times the SPA gets rendered on the browser it has to generate the code.spas should not uses
      *            statically configured code values.
-     * @return
+     * @return Response
      */
     @Path("login")
     @GET
     public Response getAuthzCode(@QueryParam("spaName") String spaName, @QueryParam("code") String code) {
 
         if (spaName == null || spaName.isEmpty()) {
-            return ProxyUtils.handleResponse(ProxyUtils.OperationStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.OperationStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
                     ProxyFaultCodes.Name.INVALID_INPUTS, "The value of the spaName cannot be null.");
         }
 
         if (code == null || code.isEmpty()) {
-            return ProxyUtils.handleResponse(ProxyUtils.OperationStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.OperationStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
                     ProxyFaultCodes.Name.INVALID_INPUTS, "The value of the code cannot be null.");
         }
 
@@ -118,7 +121,7 @@ public class LoginProxy {
 
         try {
             // create a cookie under the proxy domain having code as the key and spaName as the value.
-            Cookie cookie = new Cookie(code, spaName);
+            Cookie cookie = new Cookie(ProxyUtils.getSpaNameCookieName(code), spaName);
             // this cookie is only accessible by HTTPS transport.
             cookie.setSecure(true);
             // add cookie to the response.
@@ -133,17 +136,18 @@ public class LoginProxy {
                     .buildQueryMessage();
         } catch (OAuthSystemException e) {
             log.error(e);
-            return ProxyUtils.handleResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
                     ProxyFaultCodes.ERROR_003, ProxyFaultCodes.Name.INTERNAL_SERVER_ERROR, e.getMessage());
         }
 
         try {
             // redirects the user to the identity server's authorization end-point.
             resp.sendRedirect(authzRequest.getLocationUri());
+            // Once redirection is successful no need to return a response thus returning null.
             return null;
         } catch (IOException e) {
             log.error(e);
-            return ProxyUtils.handleResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
                     ProxyFaultCodes.ERROR_003, ProxyFaultCodes.Name.INTERNAL_SERVER_ERROR, e.getMessage());
         }
 
@@ -158,40 +162,30 @@ public class LoginProxy {
      *            token to get an access token from the identity server.
      * @param state this is the same value we set as state, when we initiate the authorization grant request to the
      *            identity server.
-     * @return
+     * @return Response
      */
     @Path("callback")
     @GET
     public Response handleCallback(@QueryParam("code") String code, @QueryParam("state") String state) {
 
         if (code == null || code.isEmpty()) {
-            return ProxyUtils.handleResponse(ProxyUtils.OperationStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.OperationStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
                     ProxyFaultCodes.Name.INVALID_INPUTS, "The value of the code cannot be null.");
         }
 
         if (state == null || state.isEmpty()) {
-            return ProxyUtils.handleResponse(ProxyUtils.OperationStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.OperationStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
                     ProxyFaultCodes.Name.INVALID_INPUTS, "The value of the state cannot be null.");
         }
 
         HttpServletResponse resp = context.getHttpServletResponse();
         HttpServletRequest req = context.getHttpServletRequest();
         Cookie[] cookies = req.getCookies();
-
-        String spaName = null;
-
         // try to load the cookie corresponding to the value of the state.
-        if (cookies != null && cookies.length > 0) {
-            for (int i = 0; i < cookies.length; i++) {
-                if (cookies[i].getName().equals(state)) {
-                    spaName = cookies[i].getValue();
-                    break;
-                }
-            }
-        }
+        String spaName = getCookievalue(cookies, ProxyUtils.getSpaNameCookieName(state));
 
-        if (spaName == null) {
-            return ProxyUtils.handleResponse(ProxyUtils.OperationStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+        if (StringUtils.isEmpty(spaName)) {
+            return ProxyUtils.handleErrorResponse(ProxyUtils.OperationStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
                     ProxyFaultCodes.Name.INVALID_INPUTS, "No valid cookie found.");
         }
 
@@ -219,7 +213,7 @@ public class LoginProxy {
                     .buildBodyMessage();
         } catch (OAuthSystemException e) {
             log.error(e);
-            return ProxyUtils.handleResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
                     ProxyFaultCodes.ERROR_003, ProxyFaultCodes.Name.INTERNAL_SERVER_ERROR, e.getMessage());
         }
 
@@ -233,11 +227,11 @@ public class LoginProxy {
             oAuthResponse = oAuthClient.accessToken(accessRequest);
         } catch (OAuthSystemException e) {
             log.error(e);
-            return ProxyUtils.handleResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
                     ProxyFaultCodes.ERROR_003, ProxyFaultCodes.Name.INTERNAL_SERVER_ERROR, e.getMessage());
         } catch (OAuthProblemException e) {
             log.error(e);
-            return ProxyUtils.handleResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
                     ProxyFaultCodes.ERROR_003, ProxyFaultCodes.Name.INTERNAL_SERVER_ERROR, e.getMessage());
         }
 
@@ -266,7 +260,7 @@ public class LoginProxy {
             json.put(ProxyUtils.SPA_NAME, spaName);
             json.put(ProxyUtils.EXPIRATION, new Long(expiration));
         } catch (JSONException e) {
-            return ProxyUtils.handleResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
                     ProxyFaultCodes.ERROR_003, ProxyFaultCodes.Name.INTERNAL_SERVER_ERROR, e.getMessage());
         }
 
@@ -283,25 +277,26 @@ public class LoginProxy {
             // get the SPA callback URL. each SPA has its own callback URL, which is defined in the
             // oauth_proxy.properties file
             resp.sendRedirect(ProxyUtils.getSpaCallbackUrl(spaName));
+            // Once redirection is successful no need to return a response thus returning null.
             return null;
-        } catch (Exception e) {
-            return ProxyUtils.handleResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
+        } catch (OAuthProxyException | IOException e) {
+            return ProxyUtils.handleErrorResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
                     ProxyFaultCodes.ERROR_003, ProxyFaultCodes.Name.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
     /**
-     * clears all the cookies corresponding to all the service providers.
+     * clears all the cookies corresponding to the spa.
      * 
-     * @param code
-     * @return
+     * @param code appSessionId code
+     * @return Response
      */
     @Path("logout")
     @GET
     public Response logout(@QueryParam("code") String code) {
 
         if (code == null || code.isEmpty()) {
-            return ProxyUtils.handleResponse(ProxyUtils.OperationStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.OperationStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
                     ProxyFaultCodes.Name.INVALID_INPUTS, "The value of the code cannot be null.");
         }
 
@@ -309,29 +304,12 @@ public class LoginProxy {
         HttpServletResponse resp = context.getHttpServletResponse();
 
         Cookie[] cookies = req.getCookies();
-        String spaName = null;
+        String spaName = getCookievalue(cookies, ProxyUtils.getSpaNameCookieName(code));
 
-        // try to load the cookie corresponding to the value of the code.
-        if (cookies != null && cookies.length > 0) {
-            for (int i = 0; i < cookies.length; i++) {
-                if (cookies[i].getName().equals(code) && spaName == null) {
-                    JSONObject json;
-                    try {
-                        json = new JSONObject(ProxyUtils.decrypt(cookies[i].getValue()));
-                        spaName = json.getString(ProxyUtils.SPA_NAME);
-                    } catch (Exception e) {
-                        return ProxyUtils.handleResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
-                                ProxyFaultCodes.ERROR_003, ProxyFaultCodes.Name.INTERNAL_SERVER_ERROR, e.getMessage());
-                    }
-                }
-                cookies[i].setMaxAge(0);
-                cookies[i].setValue("");
-                resp.addCookie(cookies[i]);
-            }
-        }
+        clearCookies(resp, cookies, code);
 
         if (spaName == null) {
-            return ProxyUtils.handleResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
                     ProxyFaultCodes.ERROR_004, ProxyFaultCodes.Name.SERVICE_PROVIDER_DOES_NOT_EXIST,
                     "No spa found for corresponding to the provided code");
         }
@@ -340,7 +318,7 @@ public class LoginProxy {
             resp.sendRedirect(ProxyUtils.getSpaLogoutUrl(spaName));
             return null;
         } catch (IOException e) {
-            return ProxyUtils.handleResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
                     ProxyFaultCodes.ERROR_003, ProxyFaultCodes.Name.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
@@ -350,33 +328,24 @@ public class LoginProxy {
      * code parameter is its name) to extract out the user information and will send back a JSON response to the SPA.
      * 
      * @param code this should be the same code, which is used by the SPA, to talk to the /login end-point previously.
-     * @return
+     * @return Response
      */
     @Path("users")
     @GET
     public Response getUserInfo(@QueryParam("code") String code) {
 
         if (code == null || code.isEmpty()) {
-            return ProxyUtils.handleResponse(ProxyUtils.OperationStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.OperationStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
                     ProxyFaultCodes.Name.INVALID_INPUTS, "The value of the code cannot be null.");
         }
 
         HttpServletRequest req = context.getHttpServletRequest();
         Cookie[] cookies = req.getCookies();
-        String encryptedCookieValue = null;
-
         // try to load the cookie corresponding to the value of the code.
-        if (cookies != null && cookies.length > 0) {
-            for (int i = 0; i < cookies.length; i++) {
-                if (cookies[i].getName().equals(code)) {
-                    encryptedCookieValue = cookies[i].getValue();
-                    break;
-                }
-            }
-        }
+        String encryptedCookieValue = getCookievalue(cookies, code);
 
-        if (encryptedCookieValue == null) {
-            return ProxyUtils.handleResponse(ProxyUtils.OperationStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+        if (StringUtils.isEmpty(encryptedCookieValue)) {
+            return ProxyUtils.handleErrorResponse(ProxyUtils.OperationStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
                     ProxyFaultCodes.Name.INVALID_INPUTS, "No valid cookie found.");
         }
 
@@ -389,8 +358,132 @@ public class LoginProxy {
             String userInfo = json.getString(ProxyUtils.ID_TOKEN);
             // send back the base64url-decode user info response to the SPA.
             return Response.ok().entity(base64UrlDecode(userInfo)).build();
-        } catch (Exception e) {
-            return ProxyUtils.handleResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
+        } catch (OAuthProxyException | JSONException e) {
+            return ProxyUtils.handleErrorResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
+                    ProxyFaultCodes.ERROR_003, ProxyFaultCodes.Name.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+    }
+
+    /**
+     * This will be invoked by the SPA to check whether the user is authenticated.
+     * If the id_token expiry time is higher than the current time will send {authenticated: true}.
+     * Otherwise will send {authenticated: false}.
+     *
+     * @param code this should be the same code, which is used by the SPA, to talk to the /login end-point initially.
+     * @return Response {authenticated: true/false}
+     */
+    @Path("authenticated")
+    @GET
+    public Response validateUserAuthentication(@QueryParam("code") String code) {
+
+        // AppSessionId code cannot be null.
+        if (code == null || code.isEmpty()) {
+            return ProxyUtils.handleErrorResponse(ProxyUtils.OperationStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+                    ProxyFaultCodes.Name.INVALID_INPUTS, "The value of the code cannot be null.");
+        }
+
+        HttpServletRequest req = context.getHttpServletRequest();
+        Cookie[] cookies = req.getCookies();
+        // try to load the cookie corresponding to the value of the code.
+        String encryptedCookieValue = getCookievalue(cookies, code);
+
+        // No cookie corresponding to the code means, not authenticated.
+        if (StringUtils.isEmpty(encryptedCookieValue)) {
+            return buildAuthenticatedResponse(false);
+        }
+
+        // Decrypt the corresponding cookie and validate the access-token against IS introspection endpoint.
+        try{
+            JSONObject cookieValue = new JSONObject(ProxyUtils.decrypt(encryptedCookieValue));
+
+            String accessToken = cookieValue.getString(ProxyUtils.ACCESS_TOKEN);
+            String idToken = cookieValue.getString(ProxyUtils.ID_TOKEN);
+
+            if (StringUtils.isNotEmpty(accessToken) && StringUtils.isNotEmpty(idToken)){
+                JSONObject idTokenInfo = new JSONObject(base64UrlDecode(idToken));
+                // Since id_token expiry time and issued time are in seconds need to get current time also in seconds.
+                long currentTime = Calendar.getInstance().getTimeInMillis() / ProxyUtils.ONE_THOUSAND;
+                long expiryTime = idTokenInfo.getLong(ProxyUtils.ID_TOKEN_EXPIRY_TIME);
+                long issuedTime = idTokenInfo.getLong(ProxyUtils.ID_TOKEN_ISSUED_TIME);
+
+                if (issuedTime < currentTime && currentTime < expiryTime) {
+                    return buildAuthenticatedResponse(true);
+                } else {
+                    return buildAuthenticatedResponse(false);
+                }
+            } else {
+                // No access_token or no id_token means not authenticated.
+                return buildAuthenticatedResponse(false);
+            }
+        } catch (OAuthProxyException | JSONException e) {
+            return ProxyUtils.handleErrorResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
+                    ProxyFaultCodes.ERROR_003, ProxyFaultCodes.Name.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+    }
+
+    /**
+     * Gives the corresponding cookie value for the given cookieName.
+     * @param cookies cookies received along the request.
+     * @param cookieName cookieName.
+     * @return cookie value, can be null.
+     */
+    private static String getCookievalue(Cookie[] cookies, String cookieName) {
+        Cookie cookie = getCookie(cookies, cookieName);
+        return cookie != null ? cookie.getValue() : StringUtils.EMPTY;
+    }
+
+    /**
+     * Gives the corresponding cookie for the given cookieName.
+     *
+     * @param cookies cookies received along the request.
+     * @param cookieName cookieName.
+     * @return cookie can be null.
+     */
+    private static Cookie getCookie(Cookie[] cookies, String cookieName) {
+        if (cookies != null){
+            for(Cookie cookie: cookies) {
+                if(cookie.getName().equals(cookieName)) {
+                    return cookie;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Clears all the cookies corresponding to appSessionId code
+     * by setting MaxAge to 0 and value to empty and adding that cookie to the response.
+     *
+     * @param response HttpServletResponse
+     * @param cookies array of Cookie
+     * @param code appSessionId cookie
+     */
+    private void clearCookies(HttpServletResponse response, Cookie[] cookies, String code) {
+        if (cookies != null && cookies.length > 0) {
+            for (Cookie cookie : cookies) {
+                if (cookie.getName().equals(code)
+                        || cookie.getName().equals(ProxyUtils.getSpaNameCookieName(code))) {
+                    cookie.setMaxAge(0);
+                    cookie.setValue("");
+                    response.addCookie(cookie);
+                }
+            }
+        }
+    }
+
+    /**
+     * Build the response for Path: authenticated.
+     *
+     * @param isAuthenticated specify whether the user has a valid access token
+     * @return Response
+     */
+    private static Response buildAuthenticatedResponse(Boolean isAuthenticated) {
+        JSONObject responseJson = new JSONObject();
+        try {
+            responseJson.put(ProxyUtils.AUTHENTICATED, isAuthenticated);
+            return Response.ok(responseJson.toString(), MediaType.APPLICATION_JSON_TYPE).build();
+        } catch (JSONException e) {
+            return ProxyUtils.handleErrorResponse(ProxyUtils.OperationStatus.INTERNAL_SERVER_ERROR,
                     ProxyFaultCodes.ERROR_003, ProxyFaultCodes.Name.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
@@ -398,11 +491,10 @@ public class LoginProxy {
     /**
      * base64url-decode the provided text.
      * 
-     * @param base64UrlEncodedStr
-     * @return
+     * @param base64UrlEncodedStr encoded value.
+     * @return String base-64 Url-decoded value.
      */
     private static String base64UrlDecode(String base64UrlEncodedStr) {
         return new String(Base64.decodeBase64(base64UrlEncodedStr.getBytes()));
     }
-
 }

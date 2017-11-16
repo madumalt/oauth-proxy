@@ -20,7 +20,7 @@
 package org.wso2.carbon.identity.oauth.proxy.util;
 
 /**
- * 
+ * Faulty Codes for failure responses in oauth proxy REST API.
  */
 public class ProxyFaultCodes {
 

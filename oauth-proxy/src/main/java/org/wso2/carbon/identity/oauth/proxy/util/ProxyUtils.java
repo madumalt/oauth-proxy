@@ -25,32 +25,30 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
+import java.security.GeneralSecurityException;
 import java.util.Properties;
 
-import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.ws.rs.core.Response;
 
 import org.apache.axiom.om.util.Base64;
 import org.apache.commons.httpclient.HttpStatus;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.oauth.proxy.bean.ErrorResponse;
+import org.wso2.carbon.identity.oauth.proxy.exceptions.OAuthProxyException;
 
 /**
- * 
- *
+ * Util class for oauth proxy client module.
  */
 public class ProxyUtils {
 
     private final static Log log = LogFactory.getLog(ProxyUtils.class);
+
+    public static final String CARBON_HOME = "carbon.home";
 
     public static final String ID_TOKEN = "id_token";
     public static final String ACCESS_TOKEN = "access_token";
@@ -75,21 +73,29 @@ public class ProxyUtils {
     public static final String SCOPE = "scope.";
     public static final String OPENID_SCOPE = "openid";
 
+    public static final String AUTHENTICATED = "authenticated";
+    public static final String AUTHENTICATED_SCOPES = "authenticated_scopes";
+
+    public static final String ID_TOKEN_EXPIRY_TIME = "exp";
+    public static final String ID_TOKEN_ISSUED_TIME = "iat";
+    public static final int ONE_THOUSAND = 1000;
+
     private static final String PROXY_ROPERTIES_FILE = "oauth_proxy.properties";
     private static final String OAUTH_PROXY_CONFIG_PATH = "oauth.proxy.property.file.path";
     private static final String SP_CALLBACK_URL_MAPPING = "sp_callback_url_mapping.";
     private static final String SP_CLOGOUT_URL_MAPPING = "sp_logout_url_mapping.";
-
     private static final String PROXY_CALLBACK_URL = "proxy_callback_url";
+    private static final String TIME_SKEW = "time_skew";
+    private static final int DEFAULT_TIME_SKEW = 0;
 
     private static Properties properties = new Properties();
 
+    // Reads the oauth_proxy.properties file.
+    // On failure throws RunTimeException to stop the oauth proxy client.
     static {
-
         FileInputStream fileInputStream = null;
         String configPath = System.getProperty(OAUTH_PROXY_CONFIG_PATH,
-                System.getProperty("carbon.home") + File.separator + "repository" + File.separator + "conf");
-
+                System.getProperty(CARBON_HOME) + File.separator + "repository" + File.separator + "conf");
         try {
             configPath = configPath + File.separator + PROXY_ROPERTIES_FILE;
             fileInputStream = new FileInputStream(new File(configPath));
@@ -118,100 +124,89 @@ public class ProxyUtils {
         SUCCESS, BAD_REQUEST, NOT_FOUND, FORBIDDEN, CREATED, INTERNAL_SERVER_ERROR
     }
 
-    /**
-     * 
-     * @return
-     */
     public static String getAuthzEp() {
         return getProperty(IS_SERVER_EP, null) + IS_AUTHORIZATION_EP;
     }
 
-    /**
-     * 
-     * @return
-     */
     public static String getTokenEp() {
         return getProperty(IS_SERVER_EP, null) + IS_TOKEN_EP;
     }
 
-    /**
-     * 
-     * @param spaName
-     * @return
-     */
     public static String getConsumerKey(String spaName) {
         return getProperty(CLIENT_ID + "." + spaName, getProperty(CLIENT_ID, null));
     }
 
-    /**
-     * 
-     * @param spaName
-     * @return
-     */
     public static String getConsumerSecret(String spaName) {
         return getProperty(CLIENT_SECRET + "." + spaName, getProperty(CLIENT_SECRET, null));
 
     }
 
-    /**
-     * 
-     * @return
-     */
     public static String getAuthzGrantType() {
         return OAUTH_GRANT_TYPE_CODE;
     }
 
-    /**
-     * 
-     * @param spaName
-     * @return
-     */
     public static String getScope(String spaName) {
         return getProperty(SCOPE + spaName.toLowerCase(), OPENID_SCOPE);
 
     }
 
-    /**
-     * 
-     * @param spaName
-     * @return
-     */
     public static String getSpaCallbackUrl(String spaName) {
         return getProperty(SP_CALLBACK_URL_MAPPING + spaName.toLowerCase(), null);
     }
 
-    /**
-     * 
-     * @param spaName
-     * @return
-     */
     public static String getSpaLogoutUrl(String spaName) {
         return getProperty(SP_CLOGOUT_URL_MAPPING + spaName.toLowerCase(), null);
     }
 
-    /**
-     * 
-     * @return
-     */
     public static String getCallbackUrl() {
         return getProperty(PROXY_CALLBACK_URL, null);
     }
 
     /**
-     * creates the response to be sent to the calling application, by the API.
-     * 
-     * @param responseStatus
-     * @param code
-     * @param name
-     * @param detail
-     * @return
+     * Retrieve the time_skew property from the oauth_proxy.properties.
+     * If not defined default to 0 (DEFAULT_TIME_SKEW).
+     * @return time skew
+     * @throws OAuthProxyException when time_skew property is not a number.
      */
-    public static Response handleResponse(ProxyUtils.OperationStatus responseStatus, String code, String name,
-            String detail) {
+    public static int getTimeSkew() throws OAuthProxyException {
+        String time_skew = getProperty(TIME_SKEW, null);
+        if (time_skew != null) {
+            try {
+                return Integer.parseInt(time_skew);
+            } catch (NumberFormatException e) {
+                throw new OAuthProxyException(
+                        "time_skew property in the oauth_proxy.properties is not a valid number.", e);
+            }
+        }
+        // If the time_skew property is not defined in the oauth_proxy.properties default to 0 time skew.
+        return DEFAULT_TIME_SKEW;
+    }
+
+    /**
+     * Construct the cookie name to store SPA name.
+     *
+     * @param code appSessionId code
+     * @return String SPA_NAME const appended to code
+     */
+    public static String getSpaNameCookieName(String code) {
+        return code + "." + ProxyUtils.SPA_NAME;
+    }
+
+    /**
+     * Creates the error response to be sent to the calling application, by the API.
+     * 
+     * @param responseStatus ProxyUtils.OperationStatus
+     * @param faultyCode ProxyFaultCodes
+     * @param faultyCodeName ProxyFaultCodes.Name
+     * @param detail error message
+     * @return Response
+     */
+    public static Response handleErrorResponse(ProxyUtils.OperationStatus responseStatus, String faultyCode,
+                                               String faultyCodeName, String detail) {
         Response response;
 
-        String message = name;
-        ErrorResponse resp = new ErrorResponse(code, name, detail);
+        String message = faultyCodeName;
+        ErrorResponse resp = new ErrorResponse(faultyCode, faultyCodeName, detail);
 
         switch (responseStatus) {
         case CREATED:
@@ -242,88 +237,96 @@ public class ProxyUtils {
     }
 
     /**
-     * 
-     * @param key
-     * @param defaultValue
-     * @return
+     * Encrypt and base64 encode the given plainText string value.
+     *
+     * @param plainText string value to be decrypted.
+     * @return encrypted string value.
+     * @throws OAuthProxyException when configurations are not correct.
+     */
+    public static String encrypt(String plainText) throws OAuthProxyException {
+
+        String key = properties.getProperty(SECRET_KEY);
+        if (key == null) {
+            throw new OAuthProxyException("No client secret key is defined in the oauth_proxy.properties " +
+                    "configuration file.");
+        }
+
+        String initVector = properties.getProperty(IV);
+        if (initVector == null) {
+            throw new OAuthProxyException("No initialization vector is defined in the oauth_proxy.properties " +
+                    "configuration file.");
+        }
+
+        IvParameterSpec iv;
+        SecretKeySpec skeySpec;
+        try {
+            iv = new IvParameterSpec(initVector.getBytes("UTF-8"));
+            skeySpec = new SecretKeySpec(key.getBytes("UTF-8"), "AES");
+        } catch (UnsupportedEncodingException e) {
+            throw new OAuthProxyException("Initialization vector or client secret key does not support UTF-8 " +
+                    "encoding", e);
+        }
+
+        try {
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING");
+            cipher.init(Cipher.ENCRYPT_MODE, skeySpec, iv);
+            byte[] encrypted = cipher.doFinal(plainText.getBytes());
+            return Base64.encode(encrypted);
+        } catch (GeneralSecurityException e) {
+            throw new OAuthProxyException("Error occurred while encrypting the plain text", e);
+        }
+    }
+
+    /**
+     * Decrypt the given base64-encoded encrypted Text String.
+     *
+     * @param encryptedText encryptedText string value.
+     * @return decrypted string value.
+     * @throws OAuthProxyException when configurations are not correct.
+     */
+    public static String decrypt(String encryptedText) throws OAuthProxyException {
+
+        String key = properties.getProperty(SECRET_KEY);
+        if (key == null) {
+            throw new OAuthProxyException("No client secret key is defined in the oauth_proxy.properties " +
+                    "configuration file.");
+        }
+
+        String initVector = properties.getProperty(IV);
+        if (initVector == null) {
+            throw new OAuthProxyException("No initialization vector is defined in the oauth_proxy.properties " +
+                    "configuration file.");
+        }
+
+        IvParameterSpec iv;
+        SecretKeySpec skeySpec;
+        try {
+            iv = new IvParameterSpec(initVector.getBytes("UTF-8"));
+            skeySpec = new SecretKeySpec(key.getBytes("UTF-8"), "AES");
+        } catch (UnsupportedEncodingException e) {
+            throw new OAuthProxyException("Initialization vector or client secret key does not support UTF-8 " +
+                    "encoding", e);
+        }
+
+        try {
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING");
+            cipher.init(Cipher.DECRYPT_MODE, skeySpec, iv);
+            byte[] original = cipher.doFinal(Base64.decode(encryptedText));
+            return new String(original);
+        } catch (GeneralSecurityException e) {
+            throw new OAuthProxyException("Error occurred while decrypting the encrypted text", e);
+        }
+    }
+
+    /**
+     * Get the loaded properties from the oauth_proxy.properties file.
+     *
+     * @param key property key.
+     * @param defaultValue defaultValue to be sent if no corresponding property value found.
+     * @return String property value.
      */
     private static String getProperty(String key, String defaultValue) {
         String propValue = (String) properties.get(key);
-        return propValue != null && !propValue.trim().isEmpty() ? propValue.trim() : defaultValue;
+        return StringUtils.isNotEmpty(propValue) ? propValue.trim() : defaultValue;
     }
-
-    /**
-     * 
-     * @param plaintext
-     * @return
-     * @throws NoSuchAlgorithmException
-     * @throws NoSuchPaddingException
-     * @throws IllegalBlockSizeException
-     * @throws BadPaddingException
-     * @throws UnsupportedEncodingException
-     * @throws InvalidKeyException
-     * @throws InvalidAlgorithmParameterException
-     */
-    public static String encrypt(String plaintext)
-            throws NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
-            UnsupportedEncodingException, InvalidKeyException, InvalidAlgorithmParameterException {
-
-        String key = properties.getProperty(SECRET_KEY);
-
-        if (key == null) {
-            throw new InvalidKeyException("No secret key is defined in the configuration file.");
-        }
-
-        String initVector = properties.getProperty(IV);
-
-        if (initVector == null) {
-            throw new InvalidKeyException("No initialization vector is defined in the configuration file.");
-        }
-
-        IvParameterSpec iv = new IvParameterSpec(initVector.getBytes("UTF-8"));
-        SecretKeySpec skeySpec = new SecretKeySpec(key.getBytes("UTF-8"), "AES");
-        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING");
-        cipher.init(Cipher.ENCRYPT_MODE, skeySpec, iv);
-        byte[] encrypted = cipher.doFinal(plaintext.getBytes());
-        return Base64.encode(encrypted);
-
-    }
-
-    /**
-     * 
-     * @param encrypted
-     * @return
-     * @throws UnsupportedEncodingException
-     * @throws NoSuchAlgorithmException
-     * @throws NoSuchPaddingException
-     * @throws IllegalBlockSizeException
-     * @throws BadPaddingException
-     * @throws InvalidKeyException
-     * @throws InvalidAlgorithmParameterException
-     */
-    public static String decrypt(String encrypted)
-            throws UnsupportedEncodingException, NoSuchAlgorithmException, NoSuchPaddingException,
-            IllegalBlockSizeException, BadPaddingException, InvalidKeyException, InvalidAlgorithmParameterException {
-
-        String key = properties.getProperty(SECRET_KEY);
-
-        if (key == null) {
-            throw new InvalidKeyException("No secret key is defined in the configuration file.");
-        }
-
-        String initVector = properties.getProperty(IV);
-
-        if (initVector == null) {
-            throw new InvalidKeyException("No initialization vector is defined in the configuration file.");
-        }
-
-        IvParameterSpec iv = new IvParameterSpec(initVector.getBytes("UTF-8"));
-        SecretKeySpec skeySpec = new SecretKeySpec(key.getBytes("UTF-8"), "AES");
-
-        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING");
-        cipher.init(Cipher.DECRYPT_MODE, skeySpec, iv);
-        byte[] original = cipher.doFinal(Base64.decode(encrypted));
-        return new String(original);
-    }
-
 }

@@ -48,73 +48,37 @@ public class ErrorResponse {
     public ErrorResponse() {
     }
 
-    /**
-     * 
-     * @param code
-     * @param type
-     * @param message
-     */
     public ErrorResponse(String code, String type, String message) {
         this.code = code;
         this.type = type;
         this.message = message;
     }
 
-    /**
-     * 
-     * @return
-     */
     public String getCode() {
         return code;
     }
 
-    /**
-     * 
-     * @param code
-     */
     public void setCode(String code) {
         this.code = code;
     }
 
-    /**
-     * 
-     * @return
-     */
     public String getType() {
         return type;
     }
 
-    /**
-     * 
-     * @param type
-     */
     public void setType(String type) {
         this.type = type;
     }
 
-    /**
-     * 
-     * @return
-     */
     public String getMessage() {
         return message;
     }
 
-    /**
-     * 
-     * @param message
-     */
     public void setMessage(String message) {
         this.message = message;
     }
 
-    /**
-     * 
-     * @param json
-     * @return
-     */
     public static ErrorResponse buildFromJson(String json) {
         return gson.fromJson(json, ErrorResponse.class);
     }
-
 }
