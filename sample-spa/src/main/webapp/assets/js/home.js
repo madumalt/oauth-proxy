@@ -27,7 +27,7 @@ $(function () {
     } else {
         // Check the validity of the access-toke against the oauth-proxy.
         $.ajax({
-            url: "https://localhost:9443/oauth2-proxy/authenticated",
+            url: "https://localhost:8443/oauth2-proxy/authenticated",
             data: {
                 code: sessionStorage.getItem(appSessionId)
             },
@@ -51,12 +51,17 @@ $(function () {
 
     // Setting the logout url.
     $('#logout-link').attr('href',
-        "https://localhost:9443/oauth2-proxy/logout?code=" + sessionStorage.getItem(appSessionId));
+        "https://localhost:8443/oauth2-proxy/logout?code=" + sessionStorage.getItem(appSessionId));
+
+    // Url for Dummy-API Via APIProxy.
+    $('#api-proxy').attr('href',
+        "https://localhost:8443/oauth2-proxy/api/" + sessionStorage.getItem(appSessionId) +
+        "/oauth2-proxy/dummy/secured-resource?resource-name=pictures");
 
     // Do an ajax call to the get the logged in user details.
     // On success show the name in the name-id element.
     $.ajax({
-        url: "https://localhost:9443/oauth2-proxy/users",
+        url: "https://localhost:8443/oauth2-proxy/users",
         data: {
             code: sessionStorage.getItem(appSessionId)
         },
@@ -77,7 +82,7 @@ $(function () {
             redirectToLoginPage();
         }
     });
-    
+
     function redirectToLoginPage() {
         window.location = "index.html";
     }

@@ -40,7 +40,6 @@
                 <groupId>com.fasterxml.jackson.jaxrs</groupId>
                 <artifactId>jackson-jaxrs-json-provider</artifactId>
                 <version>${jackson-jaxrs-json-provider-version}</version>
-                <scope>runtime</scope>
             </dependency>
             <dependency>
                 <groupId>com.google.code.gson</groupId>
@@ -51,30 +50,11 @@
                 <groupId>org.apache.cxf</groupId>
                 <artifactId>cxf-bundle</artifactId>
                 <version>${apache-cxf-bundle-version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.slf4j</groupId>
-                        <artifactId>slf4j-api</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.springframework</groupId>
-                        <artifactId>spring-core</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.springframework</groupId>
-                        <artifactId>spring-beans</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.springframework</groupId>
-                        <artifactId>spring-context</artifactId>
-                    </exclusion>
-                </exclusions>
             </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.jaxrs</groupId>
                 <artifactId>jackson-jaxrs-json-provider</artifactId>
                 <version>${jackson-jaxrs-json-provider-version}</version>
-                <scope>runtime</scope>
             </dependency>
             <dependency>
                 <groupId>org.apache.amber</groupId>
@@ -90,6 +70,19 @@
                 <groupId>commons-codec</groupId>
                 <artifactId>commons-codec</artifactId>
                 <version>${commons-code-version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.testng</groupId>
+                <artifactId>testng</artifactId>
+                <version>${testng-version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.jacoco</groupId>
+                <artifactId>org.jacoco.agent</artifactId>
+                <version>${jacoco-version}</version>
+                <classifier>runtime</classifier>
+                <scope>test</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -173,5 +166,9 @@
         <apache-amber-oauth2-client-version>0.22-incubating</apache-amber-oauth2-client-version>
         <commons-httpclient-version>3.1</commons-httpclient-version>
         <commons-code-version>1.10</commons-code-version>
+
+        <testng-version>6.9.10</testng-version>
+        <jacoco-version>0.7.9</jacoco-version>
+        <maven-surefire-plugin-version>2.18.1</maven-surefire-plugin-version>
     </properties>
 </project>

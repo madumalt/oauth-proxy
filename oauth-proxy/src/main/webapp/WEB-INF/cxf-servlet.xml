@@ -23,20 +23,36 @@
        xmlns="http://www.springframework.org/schema/beans"
        xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd   http://cxf.apache.org/jaxrs http://cxf.apache.org/schemas/jaxrs.xsd">
 
-    <jaxrs:server id="oauth2ProxyService" address="/">
+    <jaxrs:server id="oauth2LoginProxy" address="/">
         <jaxrs:serviceBeans>
-            <ref bean="loginProxy"/>  
+            <ref bean="loginProxy"/>
         </jaxrs:serviceBeans>
         <jaxrs:providers>
             <ref bean="jacksonJsonProvider"/>
         </jaxrs:providers>
+    </jaxrs:server>
 
+    <jaxrs:server id="oauth2APIProxy" address="/api">
+        <jaxrs:serviceBeans>
+            <ref bean="apiProxy"/>
+        </jaxrs:serviceBeans>
+        <jaxrs:providers>
+            <ref bean="jacksonJsonProvider"/>
+        </jaxrs:providers>
+    </jaxrs:server>
+
+    <jaxrs:server id="oauth2DummyAPI" address="/dummy">
+        <jaxrs:serviceBeans>
+            <ref bean="dummyAPI"/>
+        </jaxrs:serviceBeans>
+        <jaxrs:providers>
+            <ref bean="jacksonJsonProvider"/>
+        </jaxrs:providers>
     </jaxrs:server>
 
     <bean id="loginProxy" class="org.wso2.carbon.identity.oauth.proxy.LoginProxy"/>
-    <!-- bean id="apiPorxy" class="org.wso2.carbon.identity.oauth.proxy.APIProxy"/ -->
+    <bean id="apiProxy" class="org.wso2.carbon.identity.oauth.proxy.APIProxy"/>
+    <bean id="dummyAPI" class="org.wso2.carbon.identity.oauth.proxy.DummyAPI"/>
 
     <bean id="jacksonJsonProvider" class="com.fasterxml.jackson.jaxrs.json.JacksonJaxbJsonProvider"/>
-
-
 </beans>

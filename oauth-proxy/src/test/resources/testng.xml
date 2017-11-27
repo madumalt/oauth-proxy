@@ -1,14 +1,13 @@
-<!DOCTYPE html>
 <!--
   ~ Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
-  ~  
+  ~
   ~ WSO2 Inc. licenses this file to you under the Apache License,
   ~ Version 2.0 (the "License"); you may not use this file except
   ~ in compliance with the License.
   ~ You may obtain a copy of the License at
-  ~  
+  ~
   ~ http://www.apache.org/licenses/LICENSE-2.0
-  ~  
+  ~
   ~ Unless required by applicable law or agreed to in writing,
   ~ software distributed under the License is distributed on an
   ~ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -17,23 +16,12 @@
   ~ under the License.
   -->
 
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Mobile Shop</title>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-    <script type="text/javascript" src="assets/js/home.js"></script>
-</head>
-<body>
-<table style="table-layout: fixed; width: 100%">
-    <tr>
-        <td id="name-id"></td>
-        <td><a id="logout-link">Logout</a></td>
-    </tr>
-    <tr>
-        <td><a id="api-proxy">Invoke Dummy-API via API-Proxy</a></td>
-    </tr>
-</table>
-</body>
-</html>
+<suite name="oauth2-proxy-test-suite">
+    <test name="oauth2-proxy-test-all">
+        <classes>
+
+        </classes>
+    </test>
+</suite>

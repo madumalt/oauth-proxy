@@ -22,12 +22,10 @@
 	version="2.5" xmlns="http://java.sun.com/xml/ns/javaee"
 	xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
 	http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd">
-	<display-name>cxf</display-name>
+	<display-name>oauth2-proxy</display-name>
 
 	<servlet>
 		<servlet-name>cxf</servlet-name>
-		<display-name>cxf</display-name>
-		<description>Apache CXF Endpoint</description>
 		<servlet-class>org.apache.cxf.transport.servlet.CXFServlet</servlet-class>
 		<load-on-startup>1</load-on-startup>
 	</servlet>
@@ -40,7 +38,6 @@
 	<session-config>
 		<session-timeout>60</session-timeout>
 	</session-config>
-
 
 	<filter>
 		<filter-name>CorsFilter</filter-name>
@@ -75,5 +72,14 @@
 		<url-pattern>/*</url-pattern>
 	</filter-mapping>
 
-
+	<!--To secure with https.-->
+	<security-constraint>
+		<web-resource-collection>
+			<web-resource-name>oauth2-proxy</web-resource-name>
+			<url-pattern>/*</url-pattern>
+		</web-resource-collection>
+		<user-data-constraint>
+			<transport-guarantee>CONFIDENTIAL</transport-guarantee>
+		</user-data-constraint>
+	</security-constraint>
 </web-app>
