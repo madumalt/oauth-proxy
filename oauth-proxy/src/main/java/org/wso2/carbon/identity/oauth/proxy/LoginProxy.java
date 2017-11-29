@@ -89,12 +89,12 @@ public class LoginProxy {
                                  @QueryParam(LoginProxyUtils.SESSION_ID) String spaSessionId) {
 
         if (StringUtils.isEmpty(spaName)) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
                     "The value of the spaName cannot be null.");
         }
 
         if (StringUtils.isEmpty(spaSessionId)) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
                     "The value of the session-id cannot be null.");
         }
 
@@ -137,7 +137,7 @@ public class LoginProxy {
                     .buildQueryMessage();
         } catch (OAuthSystemException e) {
             log.error(e);
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.INTERNAL_SERVER_ERROR,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.INTERNAL_SERVER_ERROR,
                     ProxyFaultCodes.ERROR_003, e.getMessage());
         }
 
@@ -148,7 +148,7 @@ public class LoginProxy {
             return null;
         } catch (IOException e) {
             log.error(e);
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.INTERNAL_SERVER_ERROR,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.INTERNAL_SERVER_ERROR,
                     ProxyFaultCodes.ERROR_003, e.getMessage());
         }
 
@@ -170,12 +170,12 @@ public class LoginProxy {
     public Response handleCallback(@QueryParam("code") String oauthCode, @QueryParam("state") String state) {
 
         if (StringUtils.isEmpty(oauthCode)) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
                     "The value of the oauthCode cannot be empty.");
         }
 
         if (StringUtils.isEmpty(state)) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
                     "The value of the state cannot be empty.");
         }
 
@@ -186,7 +186,7 @@ public class LoginProxy {
         String spaName = ProxyUtils.getCookievalue(cookies, LoginProxyUtils.getSpaNameCookieName(state));
 
         if (StringUtils.isEmpty(spaName)) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
                     "No valid cookie holding spa-name is found.");
         }
 
@@ -212,8 +212,8 @@ public class LoginProxy {
                     consumerSecret, callbackUrl, oauthCode);
             // Build the login jwt from the OAuth token endpoint response.
             jwt = LoginProxyUtils.buildLoginJwt(oAuthResponse, spaName);
-        } catch (OAuthProxyException e) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.INTERNAL_SERVER_ERROR,
+        } catch (OperationFailureExceptions e) {
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.INTERNAL_SERVER_ERROR,
                     ProxyFaultCodes.ERROR_003, e.getMessage());
         }
 
@@ -235,7 +235,7 @@ public class LoginProxy {
             // Once redirection is successful no need to return a response thus returning null.
             return null;
         } catch (OAuthProxyException | IOException e) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.INTERNAL_SERVER_ERROR,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.INTERNAL_SERVER_ERROR,
                     ProxyFaultCodes.ERROR_003, e.getMessage());
         }
     }
@@ -251,7 +251,7 @@ public class LoginProxy {
     public Response logout(@QueryParam(LoginProxyUtils.SESSION_ID) String spaSessionId) {
 
         if (StringUtils.isEmpty(spaSessionId)) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
                     "The value of the session-id cannot be null.");
         }
 
@@ -267,7 +267,7 @@ public class LoginProxy {
         clearCookies(resp, cookies, spaSessionId);
 
         if (StringUtils.isEmpty(spaName)) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.INTERNAL_SERVER_ERROR,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.INTERNAL_SERVER_ERROR,
                     ProxyFaultCodes.ERROR_001, "No corresponding spa-name found for the provided spaSessionId");
         }
 
@@ -275,7 +275,7 @@ public class LoginProxy {
             resp.sendRedirect(LoginProxyUtils.getSpaLogoutUrl(spaName));
             return null;
         } catch (IOException e) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.INTERNAL_SERVER_ERROR,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.INTERNAL_SERVER_ERROR,
                     ProxyFaultCodes.ERROR_003, e.getMessage());
         }
     }
@@ -293,7 +293,7 @@ public class LoginProxy {
     public Response getUserInfo(@QueryParam(LoginProxyUtils.SESSION_ID) String spaSessionId) {
 
         if (StringUtils.isEmpty(spaSessionId)) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
                     "The value of the session-id cannot be null.");
         }
 
@@ -305,10 +305,10 @@ public class LoginProxy {
             // Send back the base64url-decode user info response to the SPA.
             return Response.ok().entity(ProxyUtils.base64UrlDecode(userInfo)).build();
         } catch (InvalidInputException e) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
                     e.getMessage());
         } catch (ProxyConfigurationException | OperationFailureExceptions | JSONException e) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.INTERNAL_SERVER_ERROR, ProxyFaultCodes
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.INTERNAL_SERVER_ERROR, ProxyFaultCodes
                     .ERROR_003, e.getMessage());
         }
     }
@@ -327,7 +327,7 @@ public class LoginProxy {
 
         // AppSessionId spaSessionId cannot be null.
         if (StringUtils.isEmpty(spaSessionId)) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
                     "The value of the session-id cannot be empty.");
         }
 
@@ -342,13 +342,13 @@ public class LoginProxy {
         }
 
         // Decrypt the corresponding cookie and validate the authentication.
-        try{
+        try {
             JSONObject cookieValue = new JSONObject(ProxyUtils.decrypt(encryptedCookieValue));
 
             String accessToken = cookieValue.getString(ProxyUtils.ACCESS_TOKEN);
             String idToken = cookieValue.getString(ProxyUtils.ID_TOKEN);
 
-            if (StringUtils.isNotEmpty(accessToken) && StringUtils.isNotEmpty(idToken)){
+            if (StringUtils.isNotEmpty(accessToken) && StringUtils.isNotEmpty(idToken)) {
                 JSONObject idTokenInfo = new JSONObject(ProxyUtils.base64UrlDecode(idToken));
                 // Since id_token expiry time and issued time are in seconds need to get current time also in seconds.
                 long currentTime = Calendar.getInstance().getTimeInMillis() /
@@ -366,7 +366,7 @@ public class LoginProxy {
                 return buildAuthenticatedResponse(false);
             }
         } catch (ProxyConfigurationException | OperationFailureExceptions | JSONException e) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.INTERNAL_SERVER_ERROR,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.INTERNAL_SERVER_ERROR,
                     ProxyFaultCodes.ERROR_003, e.getMessage());
         }
     }
@@ -384,7 +384,7 @@ public class LoginProxy {
     public Response proxyUserInfo(@QueryParam(LoginProxyUtils.SESSION_ID) String spaSessionId,
                                   @QueryParam(LoginProxyUtils.SCOPE) String scope) {
         if (StringUtils.isEmpty(spaSessionId)) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
                     "The value of the session-id cannot be null.");
         }
 
@@ -394,7 +394,7 @@ public class LoginProxy {
 
             // Respond with an error when no access_token is found.
             if (StringUtils.isEmpty(accessToken)) {
-                return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.FORBIDDEN, ProxyFaultCodes.ERROR_011,
+                return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.FORBIDDEN, ProxyFaultCodes.ERROR_011,
                         "No access_token found in the cookie holding the jwt.");
             }
 
@@ -406,10 +406,10 @@ public class LoginProxy {
             return APIProxyUtils.doBearerAuthorizedGetCall(userinfoUrl, accessToken);
 
         } catch (InvalidInputException e) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
                     e.getMessage());
         } catch (ProxyConfigurationException | OperationFailureExceptions e) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.INTERNAL_SERVER_ERROR, ProxyFaultCodes
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.INTERNAL_SERVER_ERROR, ProxyFaultCodes
                     .ERROR_003, e.getMessage());
         }
     }
@@ -447,7 +447,7 @@ public class LoginProxy {
             responseJson.put(LoginProxyUtils.AUTHENTICATED, isAuthenticated);
             return Response.ok(responseJson.toString(), MediaType.APPLICATION_JSON_TYPE).build();
         } catch (JSONException e) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.INTERNAL_SERVER_ERROR,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.INTERNAL_SERVER_ERROR,
                     ProxyFaultCodes.ERROR_003, e.getMessage());
         }
     }

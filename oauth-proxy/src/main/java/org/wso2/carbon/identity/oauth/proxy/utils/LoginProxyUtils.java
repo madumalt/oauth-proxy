@@ -29,6 +29,7 @@ import org.apache.commons.lang.StringUtils;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.wso2.carbon.identity.oauth.proxy.exceptions.OAuthProxyException;
+import org.wso2.carbon.identity.oauth.proxy.exceptions.OperationFailureExceptions;
 
 import java.util.regex.Pattern;
 
@@ -138,17 +139,23 @@ public class LoginProxyUtils {
      * @return OAuthClientResponse
      * @throws OAuthProxyException on failure in obtaining a response.
      */
-    public static OAuthClientResponse getAccessToken  (String tokenEndpoint, String consumerKey, String
-            consumerSecret, String callbackUrl, String oauthCode) throws OAuthProxyException {
+    public static OAuthClientResponse getAccessToken  (String tokenEndpoint,
+                                                       String consumerKey,
+                                                       String consumerSecret,
+                                                       String callbackUrl,
+                                                       String oauthCode) throws OperationFailureExceptions {
         OAuthClientRequest accessRequest = null;
 
         // Create an OAuth 2.0 token request.
         try {
-            accessRequest = OAuthClientRequest.tokenLocation(tokenEndpoint).setGrantType(GrantType.AUTHORIZATION_CODE)
-                    .setClientId(consumerKey).setClientSecret(consumerSecret).setRedirectURI(callbackUrl).setCode(oauthCode)
+            accessRequest = OAuthClientRequest
+                    .tokenLocation(tokenEndpoint)
+                    .setGrantType(GrantType.AUTHORIZATION_CODE)
+                    .setClientId(consumerKey).setClientSecret(consumerSecret)
+                    .setRedirectURI(callbackUrl).setCode(oauthCode)
                     .buildBodyMessage();
         } catch (OAuthSystemException e) {
-            throw new OAuthProxyException("Error while building the access token request.");
+            throw new OperationFailureExceptions("Error while building the access token request.");
         }
 
         // Create an OAuth 2.0 client that uses custom HTTP client under the hood
@@ -158,7 +165,8 @@ public class LoginProxyUtils {
         try {
             return oAuthClient.accessToken(accessRequest);
         } catch (OAuthSystemException | OAuthProblemException e) {
-            throw new OAuthProxyException("Error while obtaining an access token from the authorization server.", e);
+            throw new OperationFailureExceptions("Error while obtaining an access token from the authorization" +
+                    " server.", e);
         }
     }
 
@@ -170,7 +178,8 @@ public class LoginProxyUtils {
      * @return JSONObject jwt
      * @throws OAuthProxyException on failure at creation of jwt.
      */
-    public static JSONObject buildLoginJwt (OAuthClientResponse oAuthResponse, String spaName) throws OAuthProxyException {
+    public static JSONObject buildLoginJwt (OAuthClientResponse oAuthResponse,
+                                            String spaName) throws OperationFailureExceptions {
 
         // read the access token from the OAuth token end-point response.
         String accessToken = oAuthResponse.getParam(ProxyUtils.ACCESS_TOKEN);
@@ -195,11 +204,11 @@ public class LoginProxyUtils {
             json.put(ProxyUtils.ACCESS_TOKEN, accessToken);
             json.put(ProxyUtils.REFRESH_TOKEN, refreshToken);
             json.put(ProxyUtils.SPA_NAME, spaName);
-            json.put(ProxyUtils.EXPIRATION, new Long(expiration));
+            json.put(ProxyUtils.EXPIRATION, Long.valueOf(expiration));
             return json;
         } catch (JSONException e) {
-            throw new OAuthProxyException("Error while building the login jwt from the OAuth token endpoint response" +
-                    ".", e);
+            throw new OperationFailureExceptions("Error while building the login jwt from the OAuth token endpoint " +
+                    "response.", e);
         }
     }
 

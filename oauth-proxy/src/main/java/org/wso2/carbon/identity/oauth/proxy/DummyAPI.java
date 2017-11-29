@@ -59,7 +59,7 @@ public class DummyAPI {
             json.put("dummy API", name);
             return Response.ok().entity(json.toString()).build();
         } catch (JSONException e) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.INTERNAL_SERVER_ERROR, ProxyFaultCodes
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.INTERNAL_SERVER_ERROR, ProxyFaultCodes
                     .ERROR_003, "Error while creating json output");
         }
     }

@@ -21,7 +21,7 @@ package org.wso2.carbon.identity.oauth.proxy.exceptions;
 /**
  * Exception class for invalid or nor expected inputs circumstances.
  */
-public class InvalidInputException extends OAuthProxyException{
+public class InvalidInputException extends OAuthProxyException {
     public InvalidInputException(String message) {
         super(message);
     }

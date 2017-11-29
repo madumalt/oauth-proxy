@@ -19,14 +19,14 @@
 
 package org.wso2.carbon.identity.oauth.proxy.bean;
 
+import com.google.gson.Gson;
+import com.google.gson.annotations.SerializedName;
+
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
-
-import com.google.gson.Gson;
-import com.google.gson.annotations.SerializedName;
 
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(propOrder = { "error_code", "error_type", "error_message" })

@@ -40,9 +40,9 @@ import org.apache.commons.logging.LogFactory;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.wso2.carbon.identity.oauth.proxy.bean.ErrorResponse;
-import org.wso2.carbon.identity.oauth.proxy.exceptions.OperationFailureExceptions;
 import org.wso2.carbon.identity.oauth.proxy.exceptions.InvalidInputException;
 import org.wso2.carbon.identity.oauth.proxy.exceptions.OAuthProxyException;
+import org.wso2.carbon.identity.oauth.proxy.exceptions.OperationFailureExceptions;
 import org.wso2.carbon.identity.oauth.proxy.exceptions.ProxyConfigurationException;
 
 /**
@@ -104,9 +104,9 @@ public class ProxyUtils {
      * @return cookie can be null.
      */
     public static Cookie getCookie(Cookie[] cookies, String cookieName) {
-        if (cookies != null){
-            for(Cookie cookie: cookies) {
-                if(cookie.getName().equals(cookieName)) {
+        if (cookies != null) {
+            for (Cookie cookie: cookies) {
+                if (cookie.getName().equals(cookieName)) {
                     return cookie;
                 }
             }
@@ -143,19 +143,19 @@ public class ProxyUtils {
     /**
      * Error status of the api operations.
      */
-    public enum errorStatus {
+    public enum ErrorStatus {
         BAD_REQUEST, NOT_FOUND, FORBIDDEN, INTERNAL_SERVER_ERROR
     }
 
     /**
      * Creates the error response to be sent to the calling application, by the API.
      * 
-     * @param responseStatus ProxyUtils.errorStatus
+     * @param responseStatus ProxyUtils.ErrorStatus
      * @param faultyCode ProxyFaultCodes
      * @param detail error message
      * @return Response
      */
-    public static Response handleErrorResponse(errorStatus responseStatus, ProxyFaultCodes faultyCode, String detail) {
+    public static Response handleErrorResponse(ErrorStatus responseStatus, ProxyFaultCodes faultyCode, String detail) {
         ErrorResponse resp = new ErrorResponse(faultyCode.name(), faultyCode.getMessage(), detail);
         switch (responseStatus) {
         case BAD_REQUEST:

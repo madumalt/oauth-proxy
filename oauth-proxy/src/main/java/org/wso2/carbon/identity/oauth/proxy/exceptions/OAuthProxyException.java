@@ -23,7 +23,7 @@ package org.wso2.carbon.identity.oauth.proxy.exceptions;
  */
 public class OAuthProxyException extends Exception {
 
-    public OAuthProxyException(String message){
+    public OAuthProxyException(String message) {
         super(message);
     }
 

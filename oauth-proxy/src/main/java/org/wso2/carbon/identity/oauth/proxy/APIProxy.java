@@ -46,7 +46,6 @@ import javax.ws.rs.core.Response;
  * For an E.g https://apple.com/oauth2-proxy/api/{code}/bar?beer-count=3  => https://orange.com/bar?beer-count=3.
  * All the Query Parameters are passed to the back-end APIs as it is.
  *
- * @Path /api
  */
 @Consumes({MediaType.APPLICATION_JSON})
 @Produces(MediaType.APPLICATION_JSON)
@@ -79,7 +78,7 @@ public class APIProxy {
 
         // Application Session Id code cannot be empty.
         if (StringUtils.isEmpty(spaSessionId)) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
                     "The value of the Spa-Session-Id cannot be found in the request header.");
         }
 
@@ -89,16 +88,16 @@ public class APIProxy {
 
             // Respond with an error when no access_token is found.
             if (StringUtils.isEmpty(accessToken)) {
-                return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.FORBIDDEN, ProxyFaultCodes.ERROR_011,
+                return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.FORBIDDEN, ProxyFaultCodes.ERROR_011,
                         "No accessToken found in the cookie holding the jwt.");
             }
 
             return APIProxyUtils.doBearerAuthorizedGetCall(forwardRequestUrl, accessToken);
-        } catch (InvalidInputException e){
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.BAD_REQUEST,
+        } catch (InvalidInputException e) {
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.BAD_REQUEST,
                     ProxyFaultCodes.ERROR_002, e.getMessage());
         } catch (OperationFailureExceptions | ProxyConfigurationException e) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.INTERNAL_SERVER_ERROR,
+            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.INTERNAL_SERVER_ERROR,
                     ProxyFaultCodes.ERROR_003, e.getMessage());
         }
     }

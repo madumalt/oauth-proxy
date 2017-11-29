@@ -22,19 +22,16 @@ import org.apache.commons.httpclient.Header;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpMethod;
 import org.apache.commons.httpclient.methods.GetMethod;
-import org.apache.regexp.RE;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.wso2.carbon.identity.oauth.proxy.exceptions.InvalidInputException;
-import org.wso2.carbon.identity.oauth.proxy.exceptions.OAuthProxyException;
 import org.wso2.carbon.identity.oauth.proxy.exceptions.OperationFailureExceptions;
 import org.wso2.carbon.identity.oauth.proxy.exceptions.ProxyConfigurationException;
 
+import java.io.IOException;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.Response;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+
 
 /**
  * Util class for APIProxy.
@@ -50,7 +47,7 @@ public class APIProxyUtils {
      * @param host host name to be mapped
      * @return mapped host name | null
      */
-    public static String getMappedHost(String spaName, String host){
+    public static String getMappedHost(String spaName, String host) {
         return ProxyUtils.getProperty(String.format(HOST_NAME_MAPPING_FOR_SPA, spaName, host));
     }
 
@@ -61,7 +58,7 @@ public class APIProxyUtils {
      * @param contextPath contextPath of the oauth proxy.
      * @return api proxy context path corresponding to application session.
      */
-    public static String getApiProxyContextPath(String contextPath){
+    public static String getApiProxyContextPath(String contextPath) {
         // Compiler uses StringBuilder in simple straight forward cases like this.
         // In Loops it is not the case, so in loops it is advised to use String Builder.
         // TODO refactor, const may be?
@@ -92,14 +89,14 @@ public class APIProxyUtils {
     /**
      * Build bearer authorized GET request, execute, and return the response.
      *
-     * @param Url URL for GET request
+     * @param url URL for GET request
      * @param accessToken Bearer token
-     * @return
+     * @return Response
      */
-    public static Response doBearerAuthorizedGetCall(String Url, String accessToken) throws OperationFailureExceptions {
+    public static Response doBearerAuthorizedGetCall(String url, String accessToken) throws OperationFailureExceptions {
 
         // Build GET request with the given url.
-        HttpMethod httpMethod = new GetMethod(Url);
+        HttpMethod httpMethod = new GetMethod(url);
 
         // Set Authorization header.
         Header authorizationHeader = new Header(ProxyUtils.AUTHORIZATION_HEADER,

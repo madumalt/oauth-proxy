@@ -21,7 +21,7 @@ package org.wso2.carbon.identity.oauth.proxy.exceptions;
 /**
  * Exception class for operation failures.
  */
-public class OperationFailureExceptions extends OAuthProxyException{
+public class OperationFailureExceptions extends OAuthProxyException {
     public OperationFailureExceptions(String message) {
         super(message);
     }
