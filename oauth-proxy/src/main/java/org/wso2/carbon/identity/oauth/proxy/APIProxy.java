@@ -18,18 +18,16 @@
 
 package org.wso2.carbon.identity.oauth.proxy;
 
-import org.apache.commons.httpclient.Header;
-import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.HttpMethod;
-import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.cxf.jaxrs.ext.MessageContext;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
+import org.wso2.carbon.identity.oauth.proxy.exceptions.InvalidInputException;
 import org.wso2.carbon.identity.oauth.proxy.exceptions.OAuthProxyException;
+import org.wso2.carbon.identity.oauth.proxy.exceptions.OperationFailureExceptions;
+import org.wso2.carbon.identity.oauth.proxy.exceptions.ProxyConfigurationException;
 import org.wso2.carbon.identity.oauth.proxy.utils.APIProxyUtils;
+import org.wso2.carbon.identity.oauth.proxy.utils.LoginProxyUtils;
 import org.wso2.carbon.identity.oauth.proxy.utils.ProxyFaultCodes;
 import org.wso2.carbon.identity.oauth.proxy.utils.ProxyUtils;
 
@@ -37,22 +35,20 @@ import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.io.IOException;
 
 /**
  * This endpoint act as a proxy endpoint for calling back-end APIs on behalf of the SPA.
- * The host mapping for the back-end APIs is retrieved from a host-mapping property file.
- * For an E.g https://apple.com/oauth2-prxoy/api/{code}/bar?beer-count=3  => https://orange.com/bar?beer-count=3.
+ * The host mapping for the back-end APIs is retrieved from host-mapping property in the property file.
+ * For an E.g https://apple.com/oauth2-proxy/api/{code}/bar?beer-count=3  => https://orange.com/bar?beer-count=3.
  * All the Query Parameters are passed to the back-end APIs as it is.
  *
  * @Path /api
  */
-@Consumes({ MediaType.APPLICATION_JSON })
+@Consumes({MediaType.APPLICATION_JSON})
 @Produces(MediaType.APPLICATION_JSON)
 public class APIProxy {
 
@@ -68,54 +64,40 @@ public class APIProxy {
      * Invoke the intended backend api, and returns the response.
      * Adds the access_token in Authorization Bearer Header when invoking the intended api.
      * An Encrypted jwt comprised of acces_token, refresh_token, and payload of id_token
-     * is received via a cookie whose name is {code}.
+     * is received via a cookie whose name is {Spa-Session-Id}.
+     * Id for spa session should come as a request header, Spa-Session-Id: {code}
      *
-     * @param code code id for application session
      * @return Response
      */
-    // Wildcard path for any path starting with /api/{code}
-    @Path("{code}/{var:.*}")
+    // Wildcard path for any path starting with /api/
+    @Path("/{var:.*}")
     @GET
-    public Response callAPI(@PathParam("code") String code) {
+    public Response callAPI() {
+
+        // Extract the Spa-Session-Id from the request header.
+        String spaSessionId = getSpaSessionId(context.getHttpServletRequest());
 
         // Application Session Id code cannot be empty.
-        if (StringUtils.isEmpty(code)) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002, "The value of the code cannot be null.");
+        if (StringUtils.isEmpty(spaSessionId)) {
+            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
+                    "The value of the Spa-Session-Id cannot be found in the request header.");
         }
 
-        HttpClient httpClient = new HttpClient();
-        HttpMethod httpMethod;
         try {
-            httpMethod = buildForwardRequest(context.getHttpServletRequest(), code);
+            String forwardRequestUrl = buildForwardRequestUrl(context.getHttpServletRequest(), spaSessionId);
+            String accessToken = APIProxyUtils.getAccessToken(context.getHttpServletRequest(), spaSessionId);
 
-            String access_token = getAccessToken(context.getHttpServletRequest(), code);
             // Respond with an error when no access_token is found.
-            if (StringUtils.isEmpty(access_token)) {
-                return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.FORBIDDEN, ProxyFaultCodes.ERROR_011, "No access_token found in the cookie jwt.");
+            if (StringUtils.isEmpty(accessToken)) {
+                return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.FORBIDDEN, ProxyFaultCodes.ERROR_011,
+                        "No accessToken found in the cookie holding the jwt.");
             }
 
-            // Set Authorization header.
-            Header authorizationHeader = new Header(APIProxyUtils.AUTHORIZATION_HEADER,
-                    String.format(APIProxyUtils.AUTHORIZATION_BEARER, access_token));
-            httpMethod.addRequestHeader(authorizationHeader);
-
-            try {
-                // Forward the api request.
-                int statusCode = httpClient.executeMethod(httpMethod);
-
-                // TODO what else should be there in the response?
-                // Build the response from the response received by invoking the api request.
-                Response response = Response.status(statusCode).entity(httpMethod.getResponseBodyAsString()).build();
-                return response;
-            } catch (IOException e) {
-                return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.INTERNAL_SERVER_ERROR, ProxyFaultCodes
-                        .ERROR_003, "Error while forwarding the request: " + httpMethod.getPath());
-            } finally {
-                if (httpMethod != null) {
-                    httpMethod.releaseConnection();
-                }
-            }
-        } catch (OAuthProxyException e) {
+            return APIProxyUtils.doBearerAuthorizedGetCall(forwardRequestUrl, accessToken);
+        } catch (InvalidInputException e){
+            return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.BAD_REQUEST,
+                    ProxyFaultCodes.ERROR_002, e.getMessage());
+        } catch (OperationFailureExceptions | ProxyConfigurationException e) {
             return ProxyUtils.handleErrorResponse(ProxyUtils.errorStatus.INTERNAL_SERVER_ERROR,
                     ProxyFaultCodes.ERROR_003, e.getMessage());
         }
@@ -124,57 +106,56 @@ public class APIProxy {
     /**
      * Build the Http request pointing to backend api.
      *
-     * @param request received ServletRequest
+     * @param request        received ServletRequest
      * @param appSessionCode code id for application session
-     * @return HttpMethod
+     * @return String forwardRequestUrl
      * @throws OAuthProxyException when host mapping not found
      */
-    private HttpMethod buildForwardRequest(HttpServletRequest request, String appSessionCode) throws
-            OAuthProxyException {
-        String host = request.getHeader(APIProxyUtils.HOST_REQUEST_HEADER);
+    private String buildForwardRequestUrl(HttpServletRequest request, String appSessionCode)
+            throws ProxyConfigurationException {
+        String host = request.getHeader(ProxyUtils.HOST_REQUEST_HEADER);
         boolean isSecure = request.isSecure();
-        String contextPath = request.getContextPath();
+        String requestContextPath = request.getContextPath();
         String requestUri = request.getRequestURI();
         String queryString = request.getQueryString();
 
         // Set protocol of the absolute forward Uri.
-        String protocol = isSecure ? APIProxyUtils.HTTPS : APIProxyUtils.HTTP;
+        String protocol = isSecure ? ProxyUtils.HTTPS : ProxyUtils.HTTP;
         StringBuilder absoluteForwardUri = new StringBuilder(protocol);
 
+        // Retrieve the application name from the <code>.spa_name cookie.
+        String spaName = ProxyUtils.getCookievalue(request.getCookies(), LoginProxyUtils.getSpaNameCookieName
+                (appSessionCode));
+
         // Throw OAuthProxyException when no host-mapping found.
-        if (StringUtils.isEmpty(APIProxyUtils.getHostMapping().get(host))) {
-            throw new OAuthProxyException("No host name mapping for: " + host + "found in the configurations.");
+        String mappedHost = APIProxyUtils.getMappedHost(spaName, host);
+        if (StringUtils.isEmpty(mappedHost)) {
+            throw new ProxyConfigurationException("No host name mapping for: " + spaName + "." + host
+                    + " can be found in the configurations.");
         }
 
         // Append the mapped host to absolute forward Uri.
-        absoluteForwardUri.append(APIProxyUtils.getHostMapping().get(host));
+        absoluteForwardUri.append(mappedHost);
 
         // Remove api proxy context path corresponding to the application session to get the forward Uri.
-        String forwardUri = requestUri.replace(APIProxyUtils.getApiProxyContextPath(contextPath, appSessionCode), StringUtils.EMPTY);
+        String forwardUri = requestUri.replace(APIProxyUtils.getApiProxyContextPath(requestContextPath),
+                StringUtils.EMPTY);
         absoluteForwardUri.append(forwardUri);
 
         // Append query string to the absolute forward Uri.
-        absoluteForwardUri.append(APIProxyUtils.URI_QUERY_PARAMS_SEPARATOR);
+        absoluteForwardUri.append(ProxyUtils.URI_QUERY_PARAMS_SEPARATOR);
         absoluteForwardUri.append(queryString);
 
-        return new GetMethod(absoluteForwardUri.toString());
+        return absoluteForwardUri.toString();
     }
 
     /**
-     * Extract the access_token from the corresponding cookie in the request.
+     * Extract the Spa-Seesion-Id from the request header.
      *
      * @param request HttpServletRequest received from the client
-     * @param appSeesionCode  identification code for the application session
-     * @return String access_token
-     * @throws OAuthProxyException
+     * @return Spa-Session-Id
      */
-    private String getAccessToken(HttpServletRequest request, String appSeesionCode) throws OAuthProxyException {
-        try {
-            JSONObject decryptedJwt = ProxyUtils.getDecryptedJwt(request, appSeesionCode);
-            return decryptedJwt.getString(ProxyUtils.ACCESS_TOKEN);
-        } catch (JSONException e) {
-            throw new OAuthProxyException(
-                    "Error while retrieving " + ProxyUtils.ACCESS_TOKEN + "from jwt JSONObject.", e);
-        }
+    private String getSpaSessionId(HttpServletRequest request) {
+        return request.getHeader(APIProxyUtils.SPA_SESSION_ID_HEADER);
     }
 }

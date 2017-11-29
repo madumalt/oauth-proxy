@@ -29,7 +29,7 @@ $(function () {
         $.ajax({
             url: "https://localhost:8443/oauth2-proxy/authenticated",
             data: {
-                code: sessionStorage.getItem(appSessionId)
+                'session-id' : sessionStorage.getItem(appSessionId)
             },
             // To make the ajax request synchronous.
             async: false,
@@ -51,19 +51,56 @@ $(function () {
 
     // Setting the logout url.
     $('#logout-link').attr('href',
-        "https://localhost:8443/oauth2-proxy/logout?code=" + sessionStorage.getItem(appSessionId));
+        "https://localhost:8443/oauth2-proxy/logout?session-id=" + sessionStorage.getItem(appSessionId));
 
-    // Url for Dummy-API Via APIProxy.
-    $('#api-proxy').attr('href',
-        "https://localhost:8443/oauth2-proxy/api/" + sessionStorage.getItem(appSessionId) +
-        "/oauth2-proxy/dummy/secured-resource?resource-name=pictures");
+    // Invokes backend dummy api.
+    $('#api-proxy').click(function () {
+        $.ajax({
+            url: "https://localhost:8443/oauth2-proxy/api/oauth2-proxy/dummy/secured-resource?resource-name=pictures",
+            beforeSend: function (request) {
+                request.setRequestHeader("Spa-Session-Id", sessionStorage.getItem(appSessionId));
+            },
+            // To send cookie details for cross-domain calls
+            xhrFields: {
+                withCredentials: true
+            },
+            type: "GET",
+            success: function (response) {
+                $('#api-proxy-result').html(JSON.stringify(response));
+            },
+            error: function (error) {
+                $('#api-proxy-result').html(JSON.stringify(error));
+            }
+        });
+    });
+
+    // Invokes userinfo endpoint.
+    $('#is-userinfo').click(function () {
+        $.ajax({
+            url: "https://localhost:8443/oauth2-proxy/userinfo",
+            data: {
+                'session-id' : sessionStorage.getItem(appSessionId)
+            },
+            // To send cookie details for cross-domain calls
+            xhrFields: {
+                withCredentials: true
+            },
+            type: "GET",
+            success: function (response) {
+                $('#is-userinfo-result').html(JSON.stringify(response));
+            },
+            error: function (error) {
+                $('#is-userinfo-result').html(JSON.stringify(error));
+            }
+        });
+    });
 
     // Do an ajax call to the get the logged in user details.
     // On success show the name in the name-id element.
     $.ajax({
         url: "https://localhost:8443/oauth2-proxy/users",
         data: {
-            code: sessionStorage.getItem(appSessionId)
+            'session-id': sessionStorage.getItem(appSessionId)
         },
         // To send cookie details for cross-domain calls
         xhrFields: {

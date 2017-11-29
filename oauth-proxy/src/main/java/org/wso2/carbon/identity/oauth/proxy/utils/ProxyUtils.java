@@ -40,14 +40,23 @@ import org.apache.commons.logging.LogFactory;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.wso2.carbon.identity.oauth.proxy.bean.ErrorResponse;
+import org.wso2.carbon.identity.oauth.proxy.exceptions.OperationFailureExceptions;
+import org.wso2.carbon.identity.oauth.proxy.exceptions.InvalidInputException;
 import org.wso2.carbon.identity.oauth.proxy.exceptions.OAuthProxyException;
+import org.wso2.carbon.identity.oauth.proxy.exceptions.ProxyConfigurationException;
 
 /**
  * Util class for oauth proxy client module.
  */
 public class ProxyUtils {
-
     private final static Log log = LogFactory.getLog(ProxyUtils.class);
+
+    public static final String HTTPS = "https://";
+    public static final String HTTP = "http://";
+    public static final String HOST_REQUEST_HEADER = "host";
+    public static final String AUTHORIZATION_HEADER = "AUthorization";
+    public static final String AUTHORIZATION_BEARER = "Bearer %s";
+    public static final String URI_QUERY_PARAMS_SEPARATOR = "?";
 
     public static final String ID_TOKEN = "id_token";
     public static final String ACCESS_TOKEN = "access_token";
@@ -113,21 +122,21 @@ public class ProxyUtils {
      * @return JSONObject decrypted jwt
      * @throws OAuthProxyException
      */
-    public static JSONObject getDecryptedJwt(HttpServletRequest request, String appSeesionCode) throws
-            OAuthProxyException {
+    public static JSONObject getDecryptedJwt(HttpServletRequest request, String appSeesionCode)
+            throws InvalidInputException, ProxyConfigurationException, OperationFailureExceptions {
 
         Cookie[] cookies = request.getCookies();
         // try to load the cookie corresponding to the value of the appSeesionCode.
         String encryptedjwt = ProxyUtils.getCookievalue(cookies, appSeesionCode);
 
         if (StringUtils.isEmpty(encryptedjwt)) {
-            throw new OAuthProxyException("No valid cookie holding the token data is found.");
+            throw new InvalidInputException("No valid cookie holding the token data is found.");
         }
 
         try {
             return new JSONObject(ProxyUtils.decrypt(encryptedjwt));
         } catch (JSONException e) {
-            throw new OAuthProxyException("Error while creating a JSONObject from decrypted jwt.", e);
+            throw new OperationFailureExceptions("Error while creating a JSONObject from decrypted jwt.", e);
         }
     }
 
@@ -210,17 +219,17 @@ public class ProxyUtils {
      * @return decrypted string value.
      * @throws OAuthProxyException when configurations are not correct.
      */
-    public static String decrypt(String encryptedText) throws OAuthProxyException {
+    public static String decrypt(String encryptedText) throws ProxyConfigurationException, OperationFailureExceptions {
 
         String key = properties.getProperty(SECRET_KEY);
         if (key == null) {
-            throw new OAuthProxyException("No client secret key is defined in the oauth_proxy.properties " +
+            throw new ProxyConfigurationException("No client secret key is defined in the oauth_proxy.properties " +
                     "configuration file.");
         }
 
         String initVector = properties.getProperty(IV);
         if (initVector == null) {
-            throw new OAuthProxyException("No initialization vector is defined in the oauth_proxy.properties " +
+            throw new ProxyConfigurationException("No initialization vector is defined in the oauth_proxy.properties " +
                     "configuration file.");
         }
 
@@ -230,7 +239,7 @@ public class ProxyUtils {
             iv = new IvParameterSpec(initVector.getBytes("UTF-8"));
             skeySpec = new SecretKeySpec(key.getBytes("UTF-8"), "AES");
         } catch (UnsupportedEncodingException e) {
-            throw new OAuthProxyException("Initialization vector or client secret key does not support UTF-8 " +
+            throw new ProxyConfigurationException("Initialization vector or client secret key does not support UTF-8 " +
                     "encoding", e);
         }
 
@@ -240,7 +249,7 @@ public class ProxyUtils {
             byte[] original = cipher.doFinal(Base64.decode(encryptedText));
             return new String(original);
         } catch (GeneralSecurityException e) {
-            throw new OAuthProxyException("Error occurred while decrypting the encrypted text", e);
+            throw new OperationFailureExceptions("Error occurred while decrypting the encrypted text", e);
         }
     }
 

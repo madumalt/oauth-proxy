@@ -38,14 +38,21 @@ import java.util.regex.Pattern;
 public class LoginProxyUtils {
     public static final String IS_AUTHORIZATION_EP = "/oauth2/authorize";
     public static final String IS_TOKEN_EP = "/oauth2/token";
+    public static final String IS_USER_INFO_EP = "/oauth2/userinfo";
     public static final String IS_SERVER_EP = "is_server_ep";
     public static final String CLIENT_ID = "client_id";
     public static final String CLIENT_SECRET = "client_secret";
     public static final String OAUTH_GRANT_TYPE_CODE = "code";
-    public static final String SCOPE = "scope.";
+    public static final String SCOPE_MAPPING = "scope.%s";
     public static final String OPENID_SCOPE = "openid";
     public static final String AUTHENTICATED = "authenticated";
     public static final String AUTHENTICATED_SCOPES = "authenticated_scopes";
+
+    // Query Parameters
+    public static final String SCOPE = "scope";
+    public static final String SESSION_ID = "session-id";
+    public static final String SPA_NAME = "spa-name";
+
     private static final String SP_CALLBACK_URL_MAPPING = "sp_callback_url_mapping.";
     private static final String SP_CLOGOUT_URL_MAPPING = "sp_logout_url_mapping.";
     private static final String PROXY_CALLBACK_URL = "proxy_callback_url";
@@ -53,11 +60,11 @@ public class LoginProxyUtils {
     /**
      * Construct the cookie name to store SPA name.
      *
-     * @param code appSessionId code
-     * @return String SPA_NAME const appended to code
+     * @param spaSessionId appSessionId spaSessionId
+     * @return String SPA_NAME const appended to spaSessionId
      */
-    public static String getSpaNameCookieName(String code) {
-        return code + "." + ProxyUtils.SPA_NAME;
+    public static String getSpaNameCookieName(String spaSessionId) {
+        return spaSessionId + "." + ProxyUtils.SPA_NAME;
     }
 
     public static String getAuthzEp() {
@@ -66,6 +73,10 @@ public class LoginProxyUtils {
 
     public static String getTokenEp() {
         return ProxyUtils.getProperty(IS_SERVER_EP) + IS_TOKEN_EP;
+    }
+
+    public static String getUserinfoEp() {
+        return ProxyUtils.getProperty(IS_SERVER_EP) + IS_USER_INFO_EP;
     }
 
     /**
@@ -99,7 +110,7 @@ public class LoginProxyUtils {
     }
 
     public static String getScope(String spaName) {
-        return ProxyUtils.getProperty(SCOPE + spaName.toLowerCase());
+        return ProxyUtils.getProperty(String.format(SCOPE_MAPPING, spaName.toLowerCase()));
 
     }
 

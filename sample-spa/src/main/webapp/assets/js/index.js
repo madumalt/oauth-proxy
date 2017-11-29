@@ -22,8 +22,8 @@ $(function () {
     if (!sessionStorage.getItem(appSessionId)) {
         sessionStorage.setItem(appSessionId, generateAppSessionId());
     }
-    $('#login-link').attr('href', "https://localhost:8443/oauth2-proxy/login?spaname=" + spaName +
-        "&code=" + sessionStorage.getItem(appSessionId));
+    $('#login-link').attr('href', "https://localhost:8443/oauth2-proxy/login?spa-name=" + spaName +
+        "&session-id=" + sessionStorage.getItem(appSessionId));
 
     function generateAppSessionId() {
         return (
