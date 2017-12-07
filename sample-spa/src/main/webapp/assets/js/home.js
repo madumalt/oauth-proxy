@@ -24,29 +24,6 @@ $(function () {
     // If so redirect to login page.
     if (!sessionStorage.getItem(appSessionId)) {
         redirectToLoginPage();
-    } else {
-        // Check the validity of the access-toke against the oauth-proxy.
-        $.ajax({
-            url: "https://localhost:8443/oauth2-proxy/authenticated",
-            data: {
-                'session-id' : sessionStorage.getItem(appSessionId)
-            },
-            // To make the ajax request synchronous.
-            async: false,
-            // To send cookie details for cross-domain calls
-            xhrFields: {
-                withCredentials: true
-            },
-            type: "GET",
-            success: function (response) {
-                if (!Boolean(response.authenticated)) {
-                    redirectToLoginPage()
-                }
-            },
-            error: function () {
-                redirectToLoginPage();
-            }
-        });
     }
 
     // Setting the logout url.

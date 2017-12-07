@@ -59,10 +59,7 @@ public class APIProxyUtils {
      * @return api proxy context path corresponding to application session.
      */
     public static String getApiProxyContextPath(String contextPath) {
-        // Compiler uses StringBuilder in simple straight forward cases like this.
-        // In Loops it is not the case, so in loops it is advised to use String Builder.
-        // TODO refactor, const may be?
-        return contextPath + "/api";
+        return contextPath + ProxyUtils.API_ENDPOINT;
     }
 
     /**
@@ -108,7 +105,7 @@ public class APIProxyUtils {
             // Execute the GET request.
             int statusCode = httpClient.executeMethod(httpMethod);
 
-            // TODO what else should be there in the response? also look into getResponseBodyAsStream.
+            // TODO look into getResponseBodyAsStream.
             // Build the response from the response received.
             Response response = Response.status(statusCode).entity(httpMethod.getResponseBodyAsString()).build();
             return response;

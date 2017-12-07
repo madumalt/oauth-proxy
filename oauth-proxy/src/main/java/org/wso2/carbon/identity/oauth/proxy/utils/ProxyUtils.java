@@ -51,10 +51,12 @@ import org.wso2.carbon.identity.oauth.proxy.exceptions.ProxyConfigurationExcepti
 public class ProxyUtils {
     private final static Log log = LogFactory.getLog(ProxyUtils.class);
 
+    public static final String API_ENDPOINT = "/api";
+
     public static final String HTTPS = "https://";
     public static final String HTTP = "http://";
     public static final String HOST_REQUEST_HEADER = "host";
-    public static final String AUTHORIZATION_HEADER = "AUthorization";
+    public static final String AUTHORIZATION_HEADER = "Authorization";
     public static final String AUTHORIZATION_BEARER = "Bearer %s";
     public static final String URI_QUERY_PARAMS_SEPARATOR = "?";
 

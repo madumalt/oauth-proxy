@@ -20,7 +20,6 @@
 package org.wso2.carbon.identity.oauth.proxy;
 
 import java.io.IOException;
-import java.util.Calendar;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
@@ -226,7 +225,7 @@ public class LoginProxy {
             Cookie cookie = new Cookie(state, encryptedCookieValue);
             // The cookie is only accessible by the HTTPS transport.
             cookie.setSecure(true);
-            // TODO think of an expiry time.
+            // TODO think of an expiry time for the cookie.
             // Add cookie to the response.
             resp.addCookie(cookie);
             // Get the SPA callback URL. Each SPA has its own callback URL, which is defined in the
@@ -314,64 +313,6 @@ public class LoginProxy {
     }
 
     /**
-     * This will be invoked by the SPA to check whether the user is authenticated.
-     * If the id_token expiry time is higher than the current time will send {authenticated: true}.
-     * Otherwise will send {authenticated: false}.
-     *
-     * @param spaSessionId Id for spa session.
-     * @return Response {authenticated: true/false}
-     */
-    @Path("authenticated")
-    @GET
-    public Response validateUserAuthentication(@QueryParam(LoginProxyUtils.SESSION_ID) String spaSessionId) {
-
-        // AppSessionId spaSessionId cannot be null.
-        if (StringUtils.isEmpty(spaSessionId)) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.BAD_REQUEST, ProxyFaultCodes.ERROR_002,
-                    "The value of the session-id cannot be empty.");
-        }
-
-        HttpServletRequest req = context.getHttpServletRequest();
-        Cookie[] cookies = req.getCookies();
-        // Try to load the cookie corresponding to the value of the spaSessionId.
-        String encryptedCookieValue = ProxyUtils.getCookievalue(cookies, spaSessionId);
-
-        // No cookie corresponding to the spaSessionId means, not authenticated.
-        if (StringUtils.isEmpty(encryptedCookieValue)) {
-            return buildAuthenticatedResponse(false);
-        }
-
-        // Decrypt the corresponding cookie and validate the authentication.
-        try {
-            JSONObject cookieValue = new JSONObject(ProxyUtils.decrypt(encryptedCookieValue));
-
-            String accessToken = cookieValue.getString(ProxyUtils.ACCESS_TOKEN);
-            String idToken = cookieValue.getString(ProxyUtils.ID_TOKEN);
-
-            if (StringUtils.isNotEmpty(accessToken) && StringUtils.isNotEmpty(idToken)) {
-                JSONObject idTokenInfo = new JSONObject(ProxyUtils.base64UrlDecode(idToken));
-                // Since id_token expiry time and issued time are in seconds need to get current time also in seconds.
-                long currentTime = Calendar.getInstance().getTimeInMillis() /
-                        ProxyUtils.MILLIS_TO_SECONDS_CONVERT_FACTOR;
-                long expiryTime = idTokenInfo.getLong(ProxyUtils.ID_TOKEN_EXPIRY_TIME);
-                long issuedTime = idTokenInfo.getLong(ProxyUtils.ID_TOKEN_ISSUED_TIME);
-
-                if (issuedTime < currentTime && currentTime < expiryTime) {
-                    return buildAuthenticatedResponse(true);
-                } else {
-                    return buildAuthenticatedResponse(false);
-                }
-            } else {
-                // No access_token or no id_token means not authenticated.
-                return buildAuthenticatedResponse(false);
-            }
-        } catch (ProxyConfigurationException | OperationFailureExceptions | JSONException e) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.INTERNAL_SERVER_ERROR,
-                    ProxyFaultCodes.ERROR_003, e.getMessage());
-        }
-    }
-
-    /**
      * This API is invoked by the SPA to get user information. The proxy decrypts the cookie (the one that having the
      * value of the spaSessionId parameter as its name) to extract out the access_token. Thereafter calls the  Identity
      * Server's oauth2/userinfo endpoint with the access_token and passes the response to the SPA client.
@@ -432,23 +373,6 @@ public class LoginProxy {
                     response.addCookie(cookie);
                 }
             }
-        }
-    }
-
-    /**
-     * Build the response for Path: authenticated.
-     *
-     * @param isAuthenticated specify whether the user has a valid access token
-     * @return Response
-     */
-    private static Response buildAuthenticatedResponse(Boolean isAuthenticated) {
-        JSONObject responseJson = new JSONObject();
-        try {
-            responseJson.put(LoginProxyUtils.AUTHENTICATED, isAuthenticated);
-            return Response.ok(responseJson.toString(), MediaType.APPLICATION_JSON_TYPE).build();
-        } catch (JSONException e) {
-            return ProxyUtils.handleErrorResponse(ProxyUtils.ErrorStatus.INTERNAL_SERVER_ERROR,
-                    ProxyFaultCodes.ERROR_003, e.getMessage());
         }
     }
 
