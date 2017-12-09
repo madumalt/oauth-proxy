@@ -111,7 +111,7 @@ public class APIProxy {
      * @throws OAuthProxyException when host mapping not found
      */
     private String buildForwardRequestUrl(HttpServletRequest request, String appSessionCode)
-            throws ProxyConfigurationException {
+            throws ProxyConfigurationException, InvalidInputException {
         String host = request.getHeader(ProxyUtils.HOST_REQUEST_HEADER);
         boolean isSecure = request.isSecure();
         String requestContextPath = request.getContextPath();
@@ -125,6 +125,11 @@ public class APIProxy {
         // Retrieve the application name from the <code>.spa_name cookie.
         String spaName = ProxyUtils.getCookievalue(request.getCookies(), LoginProxyUtils.getSpaNameCookieName
                 (appSessionCode));
+
+        // SPA name empty means user is not authenticated.
+        if (StringUtils.isEmpty(spaName)) {
+            throw new InvalidInputException("No cookie holding application name is found.");
+        }
 
         // Throw OAuthProxyException when no host-mapping found.
         String mappedHost = APIProxyUtils.getMappedHost(spaName, host);
