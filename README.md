@@ -7,20 +7,19 @@ while mitigating the following security threats,
 1. The client cannot be authenticated in a completely legitimate manner.
 2. The access token cannot be made invisible to the end user.
 
-The necessity of an OAuth2 Proxy for SPAs has been explained in 
+The necessity of an OAuth2 Proxy for SPAs is being explained in 
 [this blog post](https://medium.com/@madumalt/oauth2-proxy-for-single-page-applications-8f01fd5fdd52).
 The security concerns when integrating Identity and Access Management (IAM) to SPAs and how to address those concerns 
-has 
-been discussed in 
+is being discussed in 
 [this webinar](https://www.slideshare.net/prabathsiriwardena/securing-singlepage-applications-with-oauth-20).
 This is where the software security expert [Prabath Siriwardhane](https://twitter.com/prabath) has introduced the 
 concept of OAuth2 Proxy for SPAs.
 
 This implementation of OAuth2 Proxy for SPAs is bound to 
 [WSO2 Identity Server](https://wso2.com/identity-and-access-management).
-However, once the concept and implementation detail are understood making it compatible with you choice of OAuth2 IAM
- provider should be pretty straight forward. Highly encourage pull requests to enhance and generalize this 
- implementation such that this can be adopted with any OAuth2 IAM provider.
+However, once the concepts and implementation detail are understood, making it compatible with your choice of OAuth2 
+IAM provider should be pretty straight forward. Highly encourage pull requests to enhance and generalize this 
+implementation such that this can be adopted with any OAuth2 IAM provider.
 
 ## Architecture
 
@@ -108,4 +107,53 @@ request to the backend API from Proxy will be  `https://hostB.com/bar?name=lione
 
 ## Configurations
 
+```bash
+ # WSO2 Idenity Server.
+ is_server_ep=https://localhost:9443
+
+ # Client id and secret of the service provider created for the proxy.
+ client_id=IAZg7ANvWJSBdsFCvTPOt_9nkrga 
+ client_secret=M6FKmzbHafL4ihPDS3o1LbrmD9sa 
+ # Client id and secret of the SPA specific service providers at IS.
+ # After "." it should be the name of the client application.
+ client_id.mobileshop=IAZg7ANvWJSBdsFCvTPOt_9nkrga 
+ client_secret.mobileshop=M6FKmzbHafL4ihPDS3o1LbrmD9sa
+ 
+ # Callback Url of the proxy. After authentication IS should issue a callback to this Url with auth_code. 
+ proxy_callback_url=https://localhost:8443/oauth2-proxy/callback 
+
+ # Callback Url mapping for each client application. After "." it should be the name of the client application.
+ # Proxy issues the redirect after authentication and logout corresponding Url.
+ sp_callback_url_mapping.mobileshop=https://localhost:8443/sample-spa/home.html
+ sp_logout_url_mapping.mobileshop=https://localhost:8443/sample-spa/index.html
+ 
+ # OAuth scopes mapping for each SPA client application. Multiple scopes should be separated by commas.
+ # Opneid is a mandatory scope for all the applications. Without it no id_token will be available.
+ # If no scope mapping is defined for the client application then will default to openid.
+ # After "." it should be the name of the client application.
+ scope.mobileshop=openid
+
+ # SPA specific Hostname Mapping.
+ # After the first "." it should be the name of the client application.
+ # After the second "." it should be the hostname of the OAuth2 Proxy.
+ # After the "=" it should be the mapped host name.
+ host_name_mapping.mobileshop.localhost\:8443=localhost:8443
+
+ # Init vector for symmetric encryption and decryption.
+ iv=RandomInitVector
+ # Secret key for symmetric encryption and decryption.
+ secret_key=Bar12345Bar12345`
+```
+
 ## Deployment and Testing
+
+Open a terminal clone the repo, configure the proxy.properties accordingly  and move into the cloned oauth_proxy 
+directory and run `mvn clean install` in the terminal. 
+</br>
+Deploy both the oath2-proxy.war and sample-spa.war in tomcat servlet container. Thereafter if configurations are 
+right you'll be able to login to the sample-spa and will be able to invoke the dummy-API and userinfo endpoint.
+
+Another sample application to demonstrate the usage of OAuth2 Proxy has been implemented and can be found in 
+[this repo](https://github.com/madumalt/react-spa). [ReactJS](https://reactjs.org/) and the 
+[React-Boilerplate](https://www.reactboilerplate.com/) are the technologies that has been used to implement this 
+sample SPA.
